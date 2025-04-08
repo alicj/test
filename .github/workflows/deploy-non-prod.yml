@@ -13,7 +13,7 @@ env:
 jobs:
   deploy-to-non-prod:
     name: Deploy to non Prod
-    runs-on: depot-ubuntu-22.04-small
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
