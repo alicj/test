@@ -1,0 +1,58 @@
+name: CDM Deploy Workflow Prod
+
+on:
+  release:
+    types: [released]
+
+env:
+  AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION || 'us-west-2' }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+jobs:
+  deploy-to-prod:
+    name: Deploy to Prod
+    runs-on: depot-ubuntu-22.04-small
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        id: configure-aws-credentials
+        uses: aws-actions/configure-aws-credentials@05b148adc31e091bafbaf404f745055d4d3bc9d2
+        with:
+          aws-access-key-id: ${{ secrets.TERRAFORM_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.TERRAFORM_AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          role-duration-seconds: ${{ env.AWS_ROLE_DURATION_SECONDS }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+
+      - name: Install and configure Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+          cache: 'poetry'
+
+      - name: CodeArtifact Login (Internal repo)
+        id: login-codeartifact
+        uses: junipersquare/github-actions-workflows/.github/actions/login-codeartifact@main
+        with:
+          aws-access-key-id: ${{ secrets.TERRAFORM_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.TERRAFORM_AWS_SECRET_ACCESS_KEY }}
+          configure-pip: true
+          configure-poetry: true
+
+      - name: Install dependencies and Run Unit Tests
+        run: |
+          poetry install --no-interaction --no-root
+          poetry run python -m unittest discover test
+
+      - name: Build and Upload Schema to Schema Registry
+        run: |
+          poetry install --no-interaction --no-root
+          poetry run python deploy.py --env prod
