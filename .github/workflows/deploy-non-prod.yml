@@ -3,7 +3,7 @@ name: CDM Deploy Workflow non Prod
 on:
   push:
     branches:
-      - de-3364-deploy-non-prod-workflow
+      - master
 
 env:
   AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION || 'us-west-2' }}
